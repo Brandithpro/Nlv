@@ -118,11 +118,29 @@
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
+            <!-- Navigation Tabs -->
       <nav class="flex items-center gap-1.5 bg-alabaster p-1 rounded-full border luxury-border overflow-x-auto max-w-full">
         <button id="navTabLanding" type="button" class="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all bg-charcoal text-white">
           1. Apresentação
         </button>
+        <button id="navTabIntake" type="button" class="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all text-stoneWarm hover:text-charcoal">
+          2. Pré-Consulta
+        </button>
+        <!-- Aba 3 oculta até o paciente preencher o formulário -->
+        <button id="navTabSchedule" type="button" class="hidden px-3.5 py-1.5 rounded-full text-xs font-medium transition-all text-stoneWarm hover:text-charcoal">
+          3. Agenda (+24h)
+        </button>
+        <!-- Aba 4 oculta (exclusiva da Nutri) -->
+        <button id="navTabClinical" type="button" class="hidden px-3.5 py-1.5 rounded-full text-xs font-medium transition-all text-stoneWarm hover:text-charcoal items-center gap-1">
+          <span>4. Painel da Nutri & PDF</span>
+          <span class="w-2 h-2 rounded-full bg-champagne"></span>
+        </button>
+      </nav>
+
+      <!-- Settings button for the Nutritionist (Oculto para pacientes) -->
+      <button id="btnOpenConfig" type="button" class="hidden text-xs font-medium text-gold hover:text-charcoal underline underline-offset-4 transition-colors">
+        Configurar Meu CRN / WhatsApp
+      </button>
         <button id="navTabIntake" type="button" class="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all text-stoneWarm hover:text-charcoal">
           2. Pré-Consulta
         </button>
@@ -1754,5 +1772,82 @@
       computePatientPlan();
     })();
   </script>
+    <!-- Botão de Cadeado Discreto no Cantinho Inferior Esquerdo -->
+  <button id="btnNutriLock" type="button" title="Acesso Restrito da Nutricionista" class="fixed bottom-4 left-4 z-40 p-2.5 rounded-full bg-alabaster/80 text-stoneWarm/50 hover:text-charcoal hover:bg-alabaster transition-all border luxury-border shadow-sm no-print">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+    </svg>
+  </button>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabSchedule = document.getElementById('navTabSchedule');
+      const tabClinical = document.getElementById('navTabClinical');
+      const btnConfig = document.getElementById('btnOpenConfig');
+      const btnLock = document.getElementById('btnNutriLock');
+
+      // 1. Função para destravar o Modo Nutricionista
+      function ativarModoNutri() {
+        if (tabSchedule) tabSchedule.classList.remove('hidden');
+        if (tabClinical) {
+          tabClinical.classList.remove('hidden');
+          tabClinical.classList.add('flex');
+        }
+        if (btnConfig) btnConfig.classList.remove('hidden');
+      }
+
+      // Verifica se você já destravou antes neste navegador ou se já enviou pré-consulta
+      if (localStorage.getItem('nutriAdminUnlocked') === 'true') {
+        ativarModoNutri();
+      } else if (localStorage.getItem('preConsultaConcluida') === 'true') {
+        if (tabSchedule) tabSchedule.classList.remove('hidden');
+      }
+
+      // 2. Clique no cadeado do cantinho (pede senha para liberar tudo ou tranca novamente)
+      if (btnLock) {
+        btnLock.addEventListener('click', () => {
+          if (localStorage.getItem('nutriAdminUnlocked') === 'true') {
+            if (confirm('Deseja bloquear o Painel da Nutri neste aparelho e voltar à visão do paciente?')) {
+              localStorage.removeItem('nutriAdminUnlocked');
+              location.reload();
+            }
+            return;
+          }
+
+          const senha = prompt('🔒 Área da Nutricionista — Digite sua senha de acesso:');
+          // SENHA PADRÃO: 26934 (números do seu CRN). Você pode trocar abaixo se quiser!
+          if (senha === '26934' || senha === 'nutri123') {
+            localStorage.setItem('nutriAdminUnlocked', 'true');
+            ativarModoNutri();
+            if (tabClinical) tabClinical.click(); // Já abre direto a aba 4
+          } else if (senha !== null) {
+            alert('Senha incorreta.');
+          }
+        });
+      }
+
+      // 3. Liberar a Aba 3 (Agenda) automaticamente quando a seção da Agenda for aberta pós-formulário
+      const viewSchedule = document.getElementById('viewSchedule');
+      if (viewSchedule && tabSchedule) {
+        const observer = new MutationObserver(() => {
+          if (!viewSchedule.classList.contains('hidden')) {
+            tabSchedule.classList.remove('hidden');
+            localStorage.setItem('preConsultaConcluida', 'true');
+          }
+        });
+        observer.observe(viewSchedule, { attributes: true, attributeFilter: ['class'] });
+      }
+
+      // Também garante a liberação da Aba 3 ao enviar qualquer formulário dentro da Pré-Consulta
+      const viewIntake = document.getElementById('viewIntake');
+      if (viewIntake && tabSchedule) {
+        viewIntake.addEventListener('submit', () => {
+          tabSchedule.classList.remove('hidden');
+          localStorage.setItem('preConsultaConcluida', 'true');
+        });
+      }
+    });
+  </script>
+
 </body>
 </html>
